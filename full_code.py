@@ -87,6 +87,14 @@ f1_lr = f1_score(y_test, y_pred_lr, average='weighted')
 accuracy_lr = accuracy_score(y_test, y_pred_lr)
 
 # LightGBM
+"""LightGBM is a gradient boosting framework known for its high performance,
+speed, and efficiency, particularly on large, tabular datasets. 
+It grows trees leaf-wise rather than level-wise, 
+which often leads to better accuracy with faster training times. 
+Its ability to handle numerous features effectively makes it an ideal candidate,
+especially for the later stage when high-dimensional NLP features are introduced.
+"""
+
 import lightgbm as lgb
 lgbm_pipeline = Pipeline(steps=[('preprocessor', preprocessor),
                                 ('classifier', lgb.LGBMClassifier(importance_type='gain'))])
@@ -274,5 +282,9 @@ print('F1-Score: ',f1_final)
 print('Accuracy: ',acc_final)
 
 # Improvements:
-
+# Sentiment analysis? nah.
+# Fine-Tuning Your TfidfVectorizer: min_df, max_df
+# Topic Modeling with Latent Dirichlet Allocation (LDA) 
+#      discover abstract "topics" in your descriptions
+# Advanced Vectorization: Capturing Semantic Meaning Word Embeddings (e.g., Word2Vec, GloVe)
 print()
