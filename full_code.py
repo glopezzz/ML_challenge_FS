@@ -32,7 +32,7 @@ print(df['city'].value_counts())
 
 plt.figure(figsize=(12,10))
 plt.subplot(1,2,1)
-sns.countplot(data=df, y='homeType', hue='priceRange')
+sns.countplot(data=df.loc[df['homeType'] not in ['Condo']], y='homeType', hue='priceRange')
 plt.show()
 plt.subplot(1,2,2)
 sns.countplot(data=df, x='hasSpa', hue='priceRange')
@@ -53,6 +53,19 @@ y_encoded = le.fit_transform(y)
 
 numerical_cols = X.select_dtypes(include=['int64','float64']).columns.tolist()
 categorical_cols = X.select_dtypes(include=['object','bool']).columns.tolist()
+
+"""
+Pipeline
+Chains multiple steps into a single object.
+> Prevents data leakage from test to train
+> Encapsulates the sequence of operations. Clean, organized
+> Reproducibility and Consistency
+> Easier deployment -> One object contains
+ColumnTransformer
+> Handles Mixed data types
+> Avoids Manual Data Splitting
+> Integrates with Pipeline
+"""
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
@@ -287,4 +300,77 @@ print('Accuracy: ',acc_final)
 # Topic Modeling with Latent Dirichlet Allocation (LDA) 
 #      discover abstract "topics" in your descriptions
 # Advanced Vectorization: Capturing Semantic Meaning Word Embeddings (e.g., Word2Vec, GloVe)
+
+
+from sklearn.model_selection import GridSearchCV
+# Define the parameter grid for GridSearchCV
+param_grid = {
+    'classifier__n_estimators': [100, 200, 500],
+    'classifier__learning_rate': [0.05, 0.1],
+    'classifier__num_leaves': [20, 31, 40],
+    'classifier__max_depth': [-1, 10, 20]
+}
+
+# Create the GridSearchCV object
+# cv=5 means 5-fold cross-validation
+# n_jobs=-1 uses all available CPU cores
+grid_search = GridSearchCV(
+    final_pipeline, param_grid, cv=5, scoring='accuracy', n_jobs=-1, verbose=1
+)
+
+# Fit the grid search to the data
+print("\nStarting hyperparameter tuning with GridSearchCV...")
+grid_search.fit(X_train, y_train)
+print("Hyperparameter tuning complete.")
+
+# Get the best model
+best_lgbm_pipeline = grid_search.best_estimator_
+
+print("\nBest parameters found:")
+print(grid_search.best_params_)
+
+# Evaluate the best model on the test set
+y_pred = best_lgbm_pipeline.predict(X_test)
+
+# Print the accuracy and classification report
+accuracy = accuracy_score(y_test, y_pred)
+print(f'Accuracy on Test Set: {accuracy:.4f}')
+
+# Feature Importance Plot (using the best model)
+# Extract the best classifier and the preprocessor from the best pipeline
+best_classifier = best_lgbm_pipeline.named_steps['classifier']
+preprocessor_fitted = best_lgbm_pipeline.named_steps['preprocessor']
+
+# Get feature names from all transformers
+feature_names_num = numerical_cols
+feature_names_cat = list(
+    preprocessor_fitted.named_transformers_['cat']
+    .named_steps['onehot']
+    .get_feature_names_out(categorical_cols)
+)
+feature_names_nlp = list(
+    preprocessor_fitted.named_transformers_['nlp']
+    .named_steps['tfidf']
+    .get_feature_names_out(['description'])
+)
+
+# Combine all feature names
+feature_names = feature_names_num + feature_names_cat + feature_names_nlp
+
+# Get feature importances
+feature_importances = best_classifier.feature_importances_
+
+# Create a DataFrame for feature importances
+importance_df = pd.DataFrame(
+    {'Feature': feature_names, 'Importance': feature_importances}
+)
+importance_df = importance_df.sort_values(by='Importance', ascending=False)
+
+# Plot feature importances
+plt.figure(figsize=(12, 8))
+sns.barplot(x='Importance', y='Feature', data=importance_df.head(20))
+plt.title('Top 20 Feature Importances from LightGBM after GridSearchCV')
+plt.show()
+
+
 print()
